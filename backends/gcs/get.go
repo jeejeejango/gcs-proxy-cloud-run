@@ -55,6 +55,14 @@ func ReadWithCache(ctx context.Context, response http.ResponseWriter,
 	// normalize path
 	objectName := common.NormalizePath(request.URL.Path)
 
+	//ping URL reserved for NEG healthcheck
+	if objectName == "ping" {
+		response.WriteHeader(http.StatusOK)
+		return
+	}
+
+	log.Info().Msgf("request object name: %s", objectName)
+
 	// get the object handle and headers. Headers are always cached and obey
 	// Cache-Control header, so this will not call GCS unless there's a miss.
 	// In general, header hits and media hits should line up.
@@ -63,10 +71,11 @@ func ReadWithCache(ctx context.Context, response http.ResponseWriter,
 	err := setHeaders(ctx, objectHandle, response)
 	if err != nil {
 		if err == storage.ErrObjectNotExist {
+			log.Error().Msgf("%s not exist", objectName)
 			http.Error(response, "", http.StatusNotFound)
 			return
 		} else {
-			log.Error().Msgf("get: %v", err)
+			log.Error().Msgf("get %s: %v", objectName, err)
 		}
 	}
 
